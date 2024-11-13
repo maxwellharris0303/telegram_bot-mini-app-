@@ -109,5 +109,39 @@ bot.command("broadcast", async (ctx) => {
     await ctx.reply("Broadcast message sent!");
 });
 
+// Command to prompt the user to upload an image
+bot.command('uploadimage', async (ctx) => {
+    await ctx.reply("Please send me an image!");
+});
+
+// Listen for incoming photos from the user
+bot.on('message:photo', async (ctx) => {
+    try {
+        // Get the largest version of the photo sent by the user
+        const photo = ctx.message?.photo;
+        if (!photo) {
+            return ctx.reply("No photo found in the message.");
+        }
+
+        // Get the file ID of the largest photo (Telegram sends multiple sizes)
+        const fileId = photo[photo.length - 1].file_id; // Largest size is usually the last in the array
+
+        // Get the file object using the file ID
+        const file = await bot.api.getFile(fileId);
+
+        // Download the file (optional)
+        const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN!}/${file.file_path}`;
+        
+        // Respond to the user (for example, send the same image back)
+        await ctx.reply(`Received your image! You can download it from: ${fileUrl}`);
+
+        // Optionally, you can download and save the file locally or process it as needed
+        console.log(`File URL: ${fileUrl}`);
+    } catch (error) {
+        console.error("Failed to process image:", error);
+        ctx.reply("Sorry, there was an issue processing your image.");
+    }
+});
+
 // Start the bot
 bot.start();
