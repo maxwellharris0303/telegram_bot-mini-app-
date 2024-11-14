@@ -12,7 +12,8 @@ dotenv_1.default.config();
 console.log("bot token: ", process.env.TELEGRAM_BOT_TOKEN);
 const bot = new grammy_1.Bot(process.env.TELEGRAM_BOT_TOKEN);
 // Admin-only /broadcast command
-const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
+// const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
+const BOT_OWNER_ID = 1287022728; // Replace with your Telegram user ID
 let broadcast_content = "";
 let flag_testbroadcast = false;
 let flag_broadcastready = false;

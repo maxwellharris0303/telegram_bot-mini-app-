@@ -10,7 +10,8 @@ console.log("bot token: ", process.env.TELEGRAM_BOT_TOKEN);
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 // Admin-only /broadcast command
-const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
+// const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
+const BOT_OWNER_ID = 1287022728; // Replace with your Telegram user ID
 
 let broadcast_content: string = ""
 
