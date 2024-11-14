@@ -12,8 +12,9 @@ dotenv_1.default.config();
 console.log("bot token: ", process.env.TELEGRAM_BOT_TOKEN);
 const bot = new grammy_1.Bot(process.env.TELEGRAM_BOT_TOKEN);
 // Admin-only /broadcast command
-// const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
-const BOT_OWNER_ID = 1287022728; // Replace with your Telegram user ID
+const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
+// const BOT_OWNER_ID = 1287022728; // Replace with your Telegram user ID
+const ADMIN_IDS = [6383488050, 1287022728];
 let broadcast_content = "";
 let flag_testbroadcast = false;
 let flag_broadcastready = false;
@@ -56,30 +57,36 @@ async function downloadImage(url, filepath) {
     });
 }
 const defaultMainMessage = `
-Selamat Datang ke DEWARORA Online Casino Indonesia 🇮🇩
+Selamat Datang ke DEWARORA 🔥🇮🇩
+Bot Anti Nawala
+Akses Link DEWADORA kapanpun dimanapun
 
-🎁 Welcome Bonus
-✨✨Mega888 100% 🔥
-✨✨120% Sports & Slot
-💰Reload Bonus 10%
-💰Spin Free iPhone 16 Pro Max
-💰Refer Friend Free RM50
+✨✨ROLLINGAN KHUSUS 
+Slot: 0.5%
+Live Casino: 0.7%
+Sports: 0.5%
 
-💬 Livechat: @abcmitro
+💰BONUS CASHBACK 
+Slot: 5- 10%
+Live Casino: 5 - 10%
+Sports: 5%
 
-💯𝗠𝗶𝗻𝗶𝗺𝗨𝗺 𝗗𝗲𝗽𝗼𝘀𝗶𝘁 $𝟑𝟎
-💯𝗠𝗶𝗻𝗶𝗺𝗨𝗺 𝐖𝐢𝐭𝐡𝐝𝐫𝐚𝐰 $𝟓𝟎
-✔️𝐒𝐚𝐟𝐞 ✔️𝐓𝐫𝐮𝐬𝐭𝐞𝐝 ✔️ 𝐑𝐞𝐥𝐢𝐚𝐛𝐥𝐞
+💬BONUS REFERRAL 
+SLOT GAMES & LIVE CASINO 0.1%
+
+Klik Tombol MAIN untuk Bermain di APK Telegram
 `;
 // Define the inline keyboard
 const inlineKeyboard = new grammy_1.InlineKeyboard()
-    .webApp("✅ Play Now ✅", "https://dewadora1.click/")
+    .webApp("✅ Main Sekarang ✅", "https://dewadora1.click/")
     .row()
-    .url("🌐 Play on Browser", "https://dewadora1.click/")
+    .url("🌐 Main di Browser", "https://dewadora1.click/")
     .row()
-    .url("👩‍💻 Telegram Livechat", "https://t.me/abcmitro");
+    .url("👩‍💻 Livechat", "https://tinyurl.com/livechat-dewadora")
+    .row()
+    .url("👉 Telegram Official DEWADORA", "https://tinyurl.com/telegram-dewadora");
 // Path to your local image
-const imagePath = path_1.default.resolve(__dirname, 'main.jpg');
+const imagePath = path_1.default.resolve(__dirname, 'main.png');
 // You can also define any other commands based on your bot's functionality
 // Broadcast function
 async function broadcastMessage(caption) {
@@ -100,19 +107,19 @@ async function broadcastMessage(caption) {
     }
 }
 // Test Broadcast function (will be sent to only bot owner)
-async function testbroadcastMessage(caption) {
+async function testbroadcastMessage(caption, userId) {
     const photo = uploadedImagePath ? new grammy_1.InputFile(uploadedImagePath) : new grammy_1.InputFile(imagePath);
     try {
-        await bot.api.sendPhoto(BOT_OWNER_ID, photo, // Uses either URL or local file
+        await bot.api.sendPhoto(userId, photo, // Uses either URL or local file
         {
             caption: caption,
             reply_markup: inlineKeyboard,
             parse_mode: "HTML",
         });
-        console.log(`Message sent to user ${BOT_OWNER_ID}`);
+        console.log(`Message sent to user ${userId}`);
     }
     catch (error) {
-        console.error(`Failed to send message to user ${BOT_OWNER_ID}:`, error);
+        console.error(`Failed to send message to user ${userId}:`, error);
     }
 }
 // Handle the "/start" command
@@ -202,7 +209,7 @@ bot.on('message:text', async (ctx) => {
     }
     // ctx.reply("Please input the content to broadcast");
     broadcast_content = ctx.message.text;
-    await testbroadcastMessage(broadcast_content);
+    await testbroadcastMessage(broadcast_content, ctx.from?.id);
     flag_testbroadcast = false;
     flag_broadcastready = true;
 });
