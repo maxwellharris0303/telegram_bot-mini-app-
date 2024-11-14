@@ -9,6 +9,13 @@ dotenv.config();
 console.log("bot token: ", process.env.TELEGRAM_BOT_TOKEN);
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
+// Admin-only /broadcast command
+const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
+
+let broadcast_content: string = ""
+
+let flag_testbroadcast: boolean = false
+let flag_broadcastready: boolean = false
 
 // Load existing user IDs from a file
 let userIds: number[] = [];
@@ -17,6 +24,16 @@ try {
 } catch (error) {
     console.log("Could not load user IDs, starting with an empty list.");
 }
+
+let uploadedImagePath: string = "";
+
+// Define available bot commands
+bot.api.setMyCommands([
+    { command: 'start', description: 'Start interacting with the bot' },
+    { command: 'broadcast', description: 'Send a broadcast message' },
+    { command: 'testbroadcast', description: 'Send a test broadcast message' },
+    { command: 'uploadimage', description: 'Upload an image' }
+]);
 
 // Function to save user IDs to a file
 function saveUserIds() {
@@ -71,7 +88,51 @@ const inlineKeyboard = new InlineKeyboard()
 
 // Path to your local image
 const imagePath = path.resolve(__dirname, 'main.jpg');
-let uploadedImagePath: string = "";
+
+
+
+// You can also define any other commands based on your bot's functionality
+// Broadcast function
+async function broadcastMessage(caption: string) {
+    const photo = uploadedImagePath ? new InputFile(uploadedImagePath) : new InputFile(imagePath);
+
+    for (const userId of userIds) {
+        try {
+            await bot.api.sendPhoto(
+                userId,
+                photo, // Uses either URL or local file
+                {
+                    caption: caption,
+                    reply_markup: inlineKeyboard,
+                    parse_mode: "HTML",
+                }
+            );
+            console.log(`Message sent to user ${userId}`);
+        } catch (error) {
+            console.error(`Failed to send message to user ${userId}:`, error);
+        }
+    }
+}
+// Test Broadcast function (will be sent to only bot owner)
+async function testbroadcastMessage(caption: string) {
+    const photo = uploadedImagePath ? new InputFile(uploadedImagePath) : new InputFile(imagePath);
+
+    try {
+        await bot.api.sendPhoto(
+            BOT_OWNER_ID,
+            photo, // Uses either URL or local file
+            {
+                caption: caption,
+                reply_markup: inlineKeyboard,
+                parse_mode: "HTML",
+            }
+        );
+        console.log(`Message sent to user ${BOT_OWNER_ID}`);
+    } catch (error) {
+        console.error(`Failed to send message to user ${BOT_OWNER_ID}:`, error);
+    }
+}
+
 
 // Handle the "/start" command
 bot.command('start', async (ctx) => {
@@ -102,39 +163,29 @@ bot.command('start', async (ctx) => {
     );
 });
 
-// Broadcast function
-async function broadcastMessage(caption: string) {
-    const photo = uploadedImagePath ? path.resolve(__dirname, uploadedImagePath) : new InputFile(imagePath);
 
-    for (const userId of userIds) {
-        try {
-            await bot.api.sendPhoto(
-                userId,
-                photo, // Uses either URL or local file
-                {
-                    caption: caption,
-                    reply_markup: inlineKeyboard,
-                    parse_mode: "HTML",
-                }
-            );
-            console.log(`Message sent to user ${userId}`);
-        } catch (error) {
-            console.error(`Failed to send message to user ${userId}:`, error);
-        }
-    }
-}
-
-// Admin-only /broadcast command
-const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
 
 bot.command("broadcast", async (ctx) => {
     if (ctx.from?.id !== BOT_OWNER_ID) {
         return ctx.reply("You are not authorized to use this command.");
     }
 
-    const message = ctx.message?.text?.split(" ").slice(1).join(" ") || defaultMainMessage;
+    if (!flag_broadcastready) {
+        return ctx.reply("Broadcast is not ready.");
+    }
+    const message = broadcast_content || defaultMainMessage;
     await broadcastMessage(message);
     await ctx.reply("Broadcast message sent!");
+
+    flag_broadcastready = false
+});
+
+bot.command("testbroadcast", async (ctx) => {
+    if (ctx.from?.id !== BOT_OWNER_ID) {
+        return ctx.reply("You are not authorized to use this command.");
+    }
+    flag_testbroadcast = true
+    ctx.reply("Please send the content to broadcast.");
 });
 
 // // Command to prompt the user to upload an image
@@ -160,14 +211,14 @@ bot.on('message:photo', async (ctx) => {
         // Get the file object using the file ID
         const file = await bot.api.getFile(fileId);
 
-        if (!fs.existsSync('downloads')) {
-            fs.mkdirSync('downloads');
+        if (!fs.existsSync(path.resolve(__dirname, 'downloads'))) {
+            fs.mkdirSync(path.resolve(__dirname, 'downloads'));
         }
 
         // Download the file (optional)
         const imageUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN!}/${file.file_path}`;
         // Define the local file path where the image will be saved
-        uploadedImagePath = `downloads/${fileId}.jpg`;
+        uploadedImagePath = path.resolve(__dirname, `downloads/${fileId}.jpg`);
 
         // Download and save the image file locally
         await downloadImage(imageUrl, uploadedImagePath);
@@ -183,6 +234,18 @@ bot.on('message:photo', async (ctx) => {
         console.error("Failed to process image:", error);
         ctx.reply("Sorry, there was an issue processing your image.");
     }
+});
+
+bot.on('message:text', async (ctx) => {
+    if (!flag_testbroadcast) {
+        return;
+    }
+    // ctx.reply("Please input the content to broadcast");
+    broadcast_content = ctx.message.text
+    await testbroadcastMessage(broadcast_content);
+
+    flag_testbroadcast = false;
+    flag_broadcastready = true;
 });
 
 // Start the bot
