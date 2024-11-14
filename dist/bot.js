@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const grammy_1 = require("grammy");
 const fs_1 = __importDefault(require("fs"));
+const https_1 = __importDefault(require("https"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path")); // Import path to handle file paths
 dotenv_1.default.config();
@@ -21,6 +22,24 @@ catch (error) {
 // Function to save user IDs to a file
 function saveUserIds() {
     fs_1.default.writeFileSync("user_ids.json", JSON.stringify(userIds, null, 2));
+}
+async function downloadImage(url, filepath) {
+    return new Promise((resolve, reject) => {
+        https_1.default.get(url, (response) => {
+            const fileStream = fs_1.default.createWriteStream(filepath);
+            response.pipe(fileStream);
+            fileStream.on('finish', () => {
+                fileStream.close();
+                resolve();
+            });
+            fileStream.on('error', (error) => {
+                fs_1.default.unlink(filepath, () => { }); // Remove file if there’s an error
+                reject(error);
+            });
+        }).on('error', (error) => {
+            reject(error);
+        });
+    });
 }
 const defaultMainMessage = `
 Selamat Datang ke DEWARORA Online Casino Indonesia 🇮🇩
@@ -47,10 +66,12 @@ const inlineKeyboard = new grammy_1.InlineKeyboard()
     .url("👩‍💻 Telegram Livechat", "https://t.me/abcmitro");
 // Path to your local image
 const imagePath = path_1.default.resolve(__dirname, 'main.jpg');
+let uploadedImagePath = "";
 // Handle the "/start" command
 bot.command('start', async (ctx) => {
     const user = ctx.from;
     const userId = user?.id;
+    console.log(user);
     if (userId && !userIds.includes(userId)) {
         userIds.push(userId);
         saveUserIds();
@@ -72,9 +93,10 @@ bot.command('start', async (ctx) => {
 });
 // Broadcast function
 async function broadcastMessage(caption) {
+    const photo = uploadedImagePath ? path_1.default.resolve(__dirname, uploadedImagePath) : new grammy_1.InputFile(imagePath);
     for (const userId of userIds) {
         try {
-            await bot.api.sendPhoto(userId, new grammy_1.InputFile(imagePath), // Local image for broadcast
+            await bot.api.sendPhoto(userId, photo, // Uses either URL or local file
             {
                 caption: caption,
                 reply_markup: inlineKeyboard,
@@ -97,12 +119,15 @@ bot.command("broadcast", async (ctx) => {
     await broadcastMessage(message);
     await ctx.reply("Broadcast message sent!");
 });
-// Command to prompt the user to upload an image
-bot.command('uploadimage', async (ctx) => {
-    await ctx.reply("Please send me an image!");
-});
+// // Command to prompt the user to upload an image
+// bot.command('uploadimage', async (ctx) => {
+//     await ctx.reply("Please send me an image!");
+// });
 // Listen for incoming photos from the user
 bot.on('message:photo', async (ctx) => {
+    if (ctx.from?.id !== BOT_OWNER_ID) {
+        return ctx.reply("You are not authorized to use this command.");
+    }
     try {
         // Get the largest version of the photo sent by the user
         const photo = ctx.message?.photo;
@@ -113,12 +138,19 @@ bot.on('message:photo', async (ctx) => {
         const fileId = photo[photo.length - 1].file_id; // Largest size is usually the last in the array
         // Get the file object using the file ID
         const file = await bot.api.getFile(fileId);
+        if (!fs_1.default.existsSync('downloads')) {
+            fs_1.default.mkdirSync('downloads');
+        }
         // Download the file (optional)
-        const fileUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+        const imageUrl = `https://api.telegram.org/file/bot${process.env.TELEGRAM_BOT_TOKEN}/${file.file_path}`;
+        // Define the local file path where the image will be saved
+        uploadedImagePath = `downloads/${fileId}.jpg`;
+        // Download and save the image file locally
+        await downloadImage(imageUrl, uploadedImagePath);
         // Respond to the user (for example, send the same image back)
-        await ctx.reply(`Received your image! You can download it from: ${fileUrl}`);
+        await ctx.reply(`Received your image! You can download it from: ${imageUrl}`);
         // Optionally, you can download and save the file locally or process it as needed
-        console.log(`File URL: ${fileUrl}`);
+        console.log(`File URL: ${imageUrl}`);
     }
     catch (error) {
         console.error("Failed to process image:", error);
