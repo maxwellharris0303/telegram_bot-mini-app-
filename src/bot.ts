@@ -10,10 +10,10 @@ console.log("bot token: ", process.env.TELEGRAM_BOT_TOKEN);
 const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN!);
 
 // Admin-only /broadcast command
-const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
+// const BOT_OWNER_ID = 6383488050; // Replace with your Telegram user ID
 // const BOT_OWNER_ID = 1287022728; // Replace with your Telegram user ID
 
-const ADMIN_IDS = [6383488050, 1287022728]
+const ADMIN_IDS = [6383488050, 1287022728, 7669738432]
 
 let broadcast_content: string = ""
 
@@ -37,6 +37,11 @@ bot.api.setMyCommands([
     { command: 'testbroadcast', description: 'Send a test broadcast message' },
     { command: 'uploadimage', description: 'Upload an image' }
 ]);
+
+// Function to check if a user is an admin
+function isAdmin(userId: number): boolean {
+    return ADMIN_IDS.includes(userId);
+}
 
 // Function to save user IDs to a file
 function saveUserIds() {
@@ -175,7 +180,7 @@ bot.command('start', async (ctx) => {
 
 
 bot.command("broadcast", async (ctx) => {
-    if (ctx.from?.id !== BOT_OWNER_ID) {
+    if (!isAdmin(ctx.from?.id!)) {
         return ctx.reply("You are not authorized to use this command.");
     }
 
@@ -190,7 +195,7 @@ bot.command("broadcast", async (ctx) => {
 });
 
 bot.command("testbroadcast", async (ctx) => {
-    if (ctx.from?.id !== BOT_OWNER_ID) {
+    if (!isAdmin(ctx.from?.id!)) {
         return ctx.reply("You are not authorized to use this command.");
     }
     flag_testbroadcast = true
@@ -204,7 +209,7 @@ bot.command("testbroadcast", async (ctx) => {
 
 // Listen for incoming photos from the user
 bot.on('message:photo', async (ctx) => {
-    if (ctx.from?.id !== BOT_OWNER_ID) {
+    if (!isAdmin(ctx.from?.id!)) {
         return ctx.reply("You are not authorized to use this command.");
     }
     try {
